@@ -36,6 +36,8 @@ example), each of them also gets **a mailbox**: a file where the others leave it
 - No more files scattered through your projects: drafts have their tray, finished documents their
   drawer.
 - You can read what it knows yourself: these are text files.
+- Its checks are proven: a check counts only once you have seen it fail, so the checker plants
+  defects on purpose and verifies that it reports each one.
 
 ## What it does not do
 

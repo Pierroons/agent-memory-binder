@@ -254,5 +254,6 @@ l'humain. Un contrôle que tu n'as jamais vu échouer ne prouve rien.
   trouves
 - **Quand quelque chose est décidé** → une ligne dans le tampon
 - **Avant d'écrire un état** → mesure-le maintenant, et écris-le avec sa date
-- **À partir du <date de relecture>, avec l'humain** → lance le contrôle, distille les tampons,
-  archive le travail clos, puis fixe la date suivante deux semaines plus tard
+- **Avant de te fier à un contrôle qui passe** → vois-le d'abord échouer sur le défaut qu'il vise
+- **À partir du <date de relecture>, avec l'humain** → lance le contrôle et son canari, distille
+  les tampons, archive le travail clos, puis fixe la date suivante deux semaines plus tard

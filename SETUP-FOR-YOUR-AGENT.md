@@ -234,5 +234,6 @@ its output. A check you have never seen fail proves nothing.
 - **Before working on a topic** → search the memory folder for it and read what you find
 - **When something is decided** → one line in the buffer
 - **Before writing a state** → measure it now, and write it with its date
-- **On or after <review date>, with the human** → run the checker, distill the buffers, archive
-  closed work, then set the next date two weeks later
+- **Before trusting a check that passes** → see it fail first on the defect it targets
+- **On or after <review date>, with the human** → run the checker and its canary, distill the
+  buffers, archive closed work, then set the next date two weeks later

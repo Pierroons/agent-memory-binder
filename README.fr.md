@@ -37,6 +37,8 @@ des messages.
 - Plus de fichiers semés dans tes projets : les brouillons ont leur bac, les documents finis leur
   tiroir.
 - Tu peux lire toi-même ce qu'il sait : ce sont des fichiers texte.
+- Ses vérifications sont éprouvées : un contrôle ne compte qu'une fois qu'on l'a vu échouer, alors
+  le script de vérification plante exprès des défauts et vérifie qu'il signale chacun.
 
 ## Ce que ça ne fait pas
 
