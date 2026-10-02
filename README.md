@@ -26,7 +26,12 @@ before doing it.
   finished documents, which never empties.
 
 If you run several Claude sessions at the same time (one on the website, one on the server, for
-example), each of them also gets **a mailbox**: a file where the others leave it messages.
+example), each of them also gets **a mailbox**: a file where the others leave it messages. A
+**board** says who is working on what right now, so that two sessions do not fix the same thing.
+And when they share a git branch, they publish through **one script that you run**: before sending,
+it takes in what the others have just sent, then logs the send. Over its first four days with us,
+from 29 September to 2 October 2026, it carried 22 sends, all logged; twice, two sessions sent less
+than a minute apart, and both sends went through.
 
 ## What it gives you
 
@@ -79,7 +84,8 @@ is in [`MEASURE.md`](MEASURE.md), so you can run the measurement yourself.
 ## What stays your decision
 
 - **Deleting a note.** Claude shows it to you first, and you say yes.
-- **Publishing anything.**
+- **Publishing anything.** When sessions share a git branch, you run the send script yourself, and
+  a hook keeps Claude from pushing.
 - **Your memory folder never goes to a public repository.** It holds what Claude knows about you,
   your projects and your machines.
 

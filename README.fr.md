@@ -27,7 +27,12 @@ te montrant chaque étape avant de la faire.
 
 Si tu fais travailler plusieurs sessions Claude en même temps (une sur le site, une sur le serveur,
 par exemple), chacune a en plus **une boîte aux lettres** : un fichier où les autres lui laissent
-des messages.
+des messages. Un **tableau** dit qui travaille sur quoi en ce moment, pour que deux sessions ne
+corrigent pas la même chose. Et quand elles partagent une branche git, elles publient par **un seul
+script, que tu lances** : avant d'envoyer, il prend en compte ce que les autres viennent d'envoyer,
+puis inscrit l'envoi dans un journal. Sur ses quatre premiers jours chez nous, du 29 septembre au
+2 octobre 2026, il a porté 22 envois, tous inscrits ; deux fois, deux sessions ont envoyé à moins
+d'une minute d'écart, et les deux envois sont passés.
 
 ## Ce que ça t'apporte
 
@@ -82,7 +87,8 @@ complet est dans [`MEASURE.fr.md`](MEASURE.fr.md), pour refaire la mesure chez t
 ## Ce qui reste ta décision
 
 - **Supprimer une fiche.** Claude te la montre d'abord, et c'est toi qui dis oui.
-- **Publier quoi que ce soit.**
+- **Publier quoi que ce soit.** Quand des sessions partagent une branche git, c'est toi qui lances
+  le script d'envoi, et un hook empêche Claude d'envoyer.
 - **Ton dossier de mémoire ne va jamais sur un dépôt public.** Il contient ce que Claude sait de toi,
   de tes projets et de tes machines.
 
