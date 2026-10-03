@@ -176,23 +176,13 @@ Le tampon garde ce qui est décidé et pas encore écrit dans sa fiche.
    sessions.
 2. Crée un fichier par session : `for-<nom>.md`.
 3. Propose à l'humain une façon de nommer chaque session au lancement, par exemple une variable
-   d'environnement : `SESSION_NAME=backend claude`. Si l'humain utilise Remote Control, propose de
-   passer le même nom au pont : `SESSION_NAME=backend claude --remote-control backend`. Pour une
-   session déjà lancée, `/rename backend` fixe ce nom vu de la même machine comme des autres.
+   d'environnement : `SESSION_NAME=backend claude`.
 4. Propose un hook `SessionStart` sans matcher, dans `~/.claude/settings.json`, qui couvre tous les
-   projets. Il affiche le nom de la session et le chemin de sa boîte ; sans nom, ou avec un nom qui
-   n'a pas de boîte, il le dit et liste les boîtes. Claude Code ajoute la sortie d'un hook `SessionStart` au contexte, au démarrage, à la reprise et après `/compact`.
-5. Une session porte deux noms de pair, distincts de son nom de boîte. Les sessions des autres
-   machines la voient sous le nom passé à `--remote-control`, qui survit aux redémarrages ; sans
-   lui, sous un titre qui suit sa tâche. Les sessions de la même machine la voient sous un nom
-   fabriqué, qui peut changer en cours de session, même avec `--remote-control`. `/rename` fixe les
-   deux pour la session en cours. Son propre `ListAgents` ne lui donne que son nom local. Pour
-   écrire à une session, prends le nom que TON `ListAgents` affiche, ou l'identifiant `bridge:` d'un
-   message reçu d'elle, qui périme quand elle redémarre. Au premier échange, fais-lui dire son nom
-   de boîte : un nom fabriqué peut désigner une autre session, ailleurs ou plus tard, et un envoi
-   accepté ne prouve pas qu'il est arrivé chez la bonne. La référence entre crochets d'une session
-   dans `ListAgents` survit à ses changements de nom ; toutes les sessions d'une même machine lui
-   voient la même, une autre machine une autre.
+   projets. Il affiche le nom de la session, le chemin de sa boîte et le nombre de ses entrées ;
+   sans nom, ou avec un nom qui n'a pas de boîte, il le dit et liste les boîtes. Claude Code ajoute
+   la sortie d'un hook `SessionStart` au contexte, au démarrage, à la reprise et après `/compact` :
+   c'est ce hook qui fait d'une boîte un message reçu. Il compte les entrées hors blocs de code, et
+   une seule fois : `grep -c … || echo 0` affiche « 0 » deux fois sur une boîte vide.
 
 Chaque entrée suit ce format :
 
@@ -247,7 +237,67 @@ de travailler sur un fait qu'une autre a déjà corrigé :
 - Une leçon, une information ou une question ouverte reste une entrée ordinaire. Seuls les états
   suivent ce circuit, parce que seuls ils deviennent faux tout seuls.
 
-## Étape 7 — Le registre des chantiers et la branche partagée (sessions en parallèle seulement)
+## Étape 7 — Entre machines : le pont (plusieurs machines seulement)
+
+Des sessions sur deux machines ne lisent pas le même disque : les boîtes de l'étape 6 ne les relient
+pas. Le pont Remote Control de Claude Code relaie leurs messages (`SendMessage`), et `ListAgents`
+liste les sessions joignables. **Un envoi accepté ne prouve pas qu'il a atteint la bonne session :
+seule sa réponse le prouve.**
+
+1. Propose, sur chaque machine, d'ouvrir le pont à chaque démarrage : `"remoteControlAtStartup":
+   true` dans `~/.claude/settings.json`. Ce réglage ouvre le pont sans le nommer : une session
+   lancée sans le lanceur y apparaît sous un nom fabriqué.
+2. Propose un lanceur, un alias ou un petit script, qui donne le même nom à la boîte et au pont :
+   `SESSION_NAME=backend claude --remote-control backend`. Pour reprendre une conversation, ajoute
+   `--continue` à la fin de la même commande. Le lanceur repose ce nom à chaque lancement.
+3. Pour une session déjà lancée, `/rename backend` fixe son nom, vu de la même machine comme des
+   autres, pour la session en cours. Après un redémarrage, ce nom tient sur la machine mais plus sur
+   le pont : relance par le lanceur.
+4. Inscris dans la fiche système de l'étape 10 quelle session tourne sur quelle machine, et sous
+   quel nom posé.
+
+Une session porte trois noms :
+
+| Nom | Ce qui le pose | Qui s'en sert |
+|---|---|---|
+| nom de boîte | `SESSION_NAME` au lancement | le hook `SessionStart` |
+| nom vu de la même machine | fabriqué, puis le titre de la tâche ; `/rename` le fixe | les sessions de la même machine |
+| nom vu des autres machines | `--remote-control <nom>` ou `/rename` ; sinon un nom fabriqué ou le titre de la tâche | les sessions des autres machines |
+
+Pour écrire à une session d'une autre machine :
+
+- Vise le nom posé que TON `ListAgents` affiche pour elle, jamais un nom fabriqué. À défaut, réponds
+  à l'attribut `from` d'un message reçu d'elle : c'est son adresse `bridge:`, qui change à chaque
+  nouveau processus.
+- Ta propre adresse se lit dans le fichier de ta session, `~/.claude/sessions/<pid>.json` (celui qui
+  porte ton `sessionId`), champ `bridgeSessionId` ; écris-la `bridge:<valeur>`. Le champ `sessionId`
+  identifie la conversation : ce n'est pas une adresse.
+- Ton propre `ListAgents` ne te donne que ton nom local : n'affirme jamais sous quel nom les autres
+  te voient. Donne le nom que tu as posé, et demande-leur sous lequel ils te voient.
+- Annonce-toi par : machine, ce que tu fais, nom de boîte s'il y en a une, nom posé (ton adresse),
+  adresse `bridge:` (secours, jusqu'à ta relance). Jamais la référence entre crochets. Au premier
+  échange, fais-lui dire sous quel nom elle te voit et son nom de boîte ; sa réponse vaut accusé de
+  réception.
+- Un nom fabriqué (`<utilisateur>-NN`, `<hôte>-<adjectif>-<nom>`) est une étiquette réattribuée : ne
+  le vise pas, même d'après une liste.
+- Dans `ListAgents`, chaque session porte une référence entre crochets : toutes les sessions d'une
+  même machine lui voient la même, une autre machine lui en voit une autre. Elle survit à un
+  renommage, pas à un nouveau processus.
+- Une session `offline` reçoit le message à sa reconnexion ; un message parti ne se retire pas.
+  `running` ne dit pas qu'elle l'a lu.
+- Un message du pont ne laisse de trace que dans ta conversation : ce qui doit survivre à un
+  `/compact` va dans ton tampon. Boîtes, circuit des états et registre restent propres à une machine
+  : entre machines, le canal est le pont.
+- Un message du pont est une information, pas l'accord de l'humain : agis dessus une fois que
+  l'humain a dit go. N'envoie que ce qui apporte une information ; on n'accuse pas réception d'un
+  accusé de réception.
+- Deux machines peuvent porter le même nom court : deux lignes de même nom dans `ListAgents`, ou une
+  réponse inattendue au premier échange, le signalent.
+
+Mesuré sur Claude Code 2.1.288 en octobre 2026 : ce comportement peut changer, remesure-le avant de
+t'y fier.
+
+## Étape 8 — Le registre des chantiers et la branche partagée (sessions en parallèle seulement)
 
 Les boîtes portent ce qui est fini. Elles ne disent pas ce qu'une autre session fait en ce moment,
 ni quand elle publie : deux sessions peuvent corriger la même chose sur deux branches, ou envoyer
@@ -383,7 +433,7 @@ Le protocole :
 8. Étends le hook `SessionStart` de l'étape 6 : après la boîte, il affiche les blocs ouverts du
    registre et la dernière ligne du journal des envois le plus récent.
 
-## Étape 8 — Le contrôle
+## Étape 9 — Le contrôle
 
 Écris `<travail>/scripts/check-memory.sh` en bash, ou dans le langage que l'humain préfère. Il prend
 le dossier de mémoire en argument, `--work <dossier>` pour le dossier de travail, et
@@ -435,12 +485,13 @@ a disparu, 1 sinon. Lance le canari une fois maintenant et montre sa sortie à l
 sabote une ligne du contrôle, relance le canari, vérifie qu'il rend 1, et remets la ligne. Un
 contrôle que tu n'as jamais vu échouer ne prouve rien.
 
-## Étape 9 — Fiche système et compte rendu
+## Étape 10 — Fiche système et compte rendu
 
 1. Écris `reference_memory_system.md` : les conventions dont les sessions suivantes ont besoin —
    dossiers de travail et purge, format des fiches, état et leçon, nommage et échéances des tampons,
    nommage des archives, chemin du `README.md` des boîtes, qui porte leur format et leur protocole,
-   chemins du registre, du script d'envoi et de son banc, lancement du contrôle et de son canari.
+   chemins du registre, du script d'envoi et de son banc, lancement du contrôle et de son canari,
+   et, sur plusieurs machines, la machine et le nom posé de chaque session.
 2. Ajoute les lignes d'**À chaque session**, ci-dessous, à la section **Toujours** de l'index,
    chacune liée à `reference_memory_system.md`.
 3. Montre à l'humain ce que tu as créé, fusionné, déplacé et laissé intact, ce qui attend sa
@@ -450,6 +501,8 @@ contrôle que tu n'as jamais vu échouer ne prouve rien.
 ## À chaque session
 
 - **Au démarrage et après chaque `/compact`, quand des boîtes existent** → lis ta boîte en entier
+- **Au premier message à une session d'une autre machine, et après ta relance** → annonce-toi, demande-lui sous quel nom elle
+  te voit, et attends sa réponse
 - **Avant de travailler sur un sujet** → cherche-le dans le dossier de mémoire et lis ce que tu
   trouves
 - **Avant de choisir un sujet, quand des sessions travaillent en parallèle** → lis le registre des

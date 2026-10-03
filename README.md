@@ -31,7 +31,8 @@ example), each of them also gets **a mailbox**: a file where the others leave it
 And when they share a git branch, they publish through **one script that you run**: before sending,
 it takes in what the others have just sent, then logs the send. Over its first four days with us,
 from 29 September to 2 October 2026, it carried 22 sends, all logged; twice, two sessions sent less
-than a minute apart, and both sends went through.
+than a minute apart, and both sends went through. And if they run on several machines, the binder
+tells how to connect them through Claude Code's bridge, and how to make sure you write to the right one.
 
 ## What it gives you
 

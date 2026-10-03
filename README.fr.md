@@ -32,7 +32,8 @@ corrigent pas la même chose. Et quand elles partagent une branche git, elles pu
 script, que tu lances** : avant d'envoyer, il prend en compte ce que les autres viennent d'envoyer,
 puis inscrit l'envoi dans un journal. Sur ses quatre premiers jours chez nous, du 29 septembre au
 2 octobre 2026, il a porté 22 envois, tous inscrits ; deux fois, deux sessions ont envoyé à moins
-d'une minute d'écart, et les deux envois sont passés.
+d'une minute d'écart, et les deux envois sont passés. Et si elles tournent sur plusieurs machines, le
+binder dit comment les relier par le pont de Claude Code, et comment être sûr d'écrire à la bonne.
 
 ## Ce que ça t'apporte
 

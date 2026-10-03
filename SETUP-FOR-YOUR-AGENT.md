@@ -162,23 +162,13 @@ The buffer holds what is decided and not yet written into its note.
 1. In `<work>/inbox/`, write a `README.md` that states the protocol below and lists the sessions.
 2. Create one file per session: `for-<name>.md`.
 3. Suggest to the human a way to name each session at launch, for example an environment variable:
-   `SESSION_NAME=backend claude`. If the human uses Remote Control, suggest passing the same name to
-   the bridge: `SESSION_NAME=backend claude --remote-control backend`. For a session already
-   running, `/rename backend` sets that name as seen from the same machine and from others.
+   `SESSION_NAME=backend claude`.
 4. Propose a `SessionStart` hook without matcher, in `~/.claude/settings.json`, which covers every
-   project. It prints the session name and the path of its inbox; without a name, or with a name
-   that has no inbox, it says so and lists the inboxes. Claude Code adds a `SessionStart` hook's
-   output to the context, at startup, on resume and after `/compact`.
-5. A session has two peer names, both distinct from its inbox name. Sessions on other machines see
-   it under the name passed to `--remote-control`, which survives restarts; without it, under a
-   title that follows its task. Sessions on the same machine see it under a generated name, which
-   can change during the session, even with `--remote-control`. `/rename` sets both for the current
-   session. Its own `ListAgents` gives it only its local name. To write to a session, use the name
-   YOUR `ListAgents` shows, or the `bridge:` ID of a message received from it, which goes stale when
-   it restarts. On the first exchange, have it state its inbox name: a generated name can point to
-   another session, elsewhere or later, and an accepted send does not prove it reached the right
-   one. A session's bracketed reference in `ListAgents` survives its name changes; every session on
-   one machine sees the same one for it, another machine sees a different one.
+   project. It prints the session name, the path of its inbox and its number of entries; without a
+   name, or with a name that has no inbox, it says so and lists the inboxes. Claude Code adds a
+   `SessionStart` hook's output to the context, at startup, on resume and after `/compact`: this
+   hook is what turns an inbox into a message received. It counts entries outside code fences, and
+   only once: `grep -c … || echo 0` prints "0" twice on an empty inbox.
 
 Every entry follows this format:
 
@@ -230,7 +220,65 @@ that another one has already fixed:
 - A lesson, a piece of information or an open question stays an ordinary entry. Only states follow
   this circuit, because only they become false on their own.
 
-## Step 7 — Work registry and shared branch (parallel sessions only)
+## Step 7 — Across machines: the bridge (several machines only)
+
+Sessions on two machines do not read the same disk: the inboxes of Step 6 do not connect them.
+Claude Code's Remote Control bridge relays their messages (`SendMessage`), and `ListAgents` lists
+the sessions you can reach. **An accepted send does not prove it reached the right session: only its
+answer does.**
+
+1. Suggest, on each machine, opening the bridge at every startup: `"remoteControlAtStartup": true`
+   in `~/.claude/settings.json`. This setting opens the bridge without naming it: a session launched
+   without the launcher shows up there under a generated name.
+2. Suggest a launcher, an alias or a small script, that gives the inbox and the bridge the same
+   name: `SESSION_NAME=backend claude --remote-control backend`. To resume a conversation, add
+   `--continue` at the end of the same command. The launcher sets that name again at every launch.
+3. For a session already running, `/rename backend` sets its name, as seen from the same machine and
+   from others, for the current session. After a restart, that name holds on the machine but no
+   longer on the bridge: relaunch through the launcher.
+4. Record in the system note of Step 10 which session runs on which machine, and under which set
+   name.
+
+A session has three names:
+
+| Name | What sets it | Who uses it |
+|---|---|---|
+| inbox name | `SESSION_NAME` at launch | the `SessionStart` hook |
+| name seen from the same machine | generated, then the task's title; `/rename` sets it | sessions on the same machine |
+| name seen from other machines | `--remote-control <name>` or `/rename`; otherwise a generated name or the task's title | sessions on other machines |
+
+To write to a session on another machine:
+
+- Address the set name YOUR `ListAgents` shows for it, never a generated name. Failing that, reply
+  to the `from` attribute of a message received from it: that is its `bridge:` address, which
+  changes with every new process.
+- Your own address is in your session's file, `~/.claude/sessions/<pid>.json` (the one that carries
+  your `sessionId`), field `bridgeSessionId`; write it as `bridge:<value>`. The `sessionId` field
+  identifies the conversation: it is not an address.
+- Your own `ListAgents` gives you only your local name: never claim under which name others see you.
+  Give the name you set, and ask them under which one they see you.
+- Announce yourself with: machine, what you do, inbox name if you have one, set name (your address),
+  `bridge:` address (fallback, until you relaunch). Never the bracketed reference. On the first
+  exchange, have it state under which name it sees you and its inbox name; its answer is the
+  acknowledgement.
+- A generated name (`<user>-NN`, `<host>-<adjective>-<noun>`) is a label that gets reassigned: do
+  not address it, even from a list.
+- In `ListAgents`, each session carries a bracketed reference: every session on one machine sees the
+  same one for it, another machine sees a different one. It survives a rename, not a new process.
+- An `offline` session gets the message when it reconnects; a message sent cannot be withdrawn.
+  `running` does not say it read it.
+- A bridge message leaves a trace only in your conversation: what must survive a `/compact` goes
+  into your buffer. Inboxes, the state circuit and the registry stay on one machine: across
+  machines, the channel is the bridge.
+- A bridge message is information, not the human's approval: act on it once the human says go. Send
+  only what brings information; do not acknowledge an acknowledgement.
+- Two machines can carry the same short name: two lines with the same name in `ListAgents`, or an
+  unexpected answer on the first exchange, give it away.
+
+Measured on Claude Code 2.1.288 in October 2026: this behaviour can change, measure it again before
+relying on it.
+
+## Step 8 — Work registry and shared branch (parallel sessions only)
 
 Inboxes carry what is finished. They do not say what another session is doing right now, nor when
 it publishes: two sessions can fix the same thing on two branches, or push to the same branch a
@@ -361,7 +409,7 @@ The protocol:
 8. Extend the `SessionStart` hook of Step 6: after the inbox, it prints the open blocks of the
    registry and the last line of the most recent send log.
 
-## Step 8 — The checker
+## Step 9 — The checker
 
 Write `<work>/scripts/check-memory.sh` in bash, or in the language the human prefers. It takes the
 memory folder as its argument, `--work <folder>` for the working folder, and `--inbox <folder>` for
@@ -408,12 +456,13 @@ that result and the temporary directory is gone, 1 otherwise. Run the canary onc
 human its output. Then break one line of the checker, run the canary again, check that it exits 1,
 and restore the line. A check you have never seen fail proves nothing.
 
-## Step 9 — System note and report
+## Step 10 — System note and report
 
 1. Write `reference_memory_system.md`: the conventions the next sessions need — working folders and
    purge, note format, state and lesson, buffer naming and deadlines, archive naming, the path of
    the inbox `README.md`, which holds their format and protocol, the paths of the registry, the
-   send script and its bench, how to run the checker and its canary.
+   send script and its bench, how to run the checker and its canary, and, on several machines, each
+   session's machine and set name.
 2. Add the lines of **Every session** below to the **Always** section of the index, each linked to
    `reference_memory_system.md`.
 3. Show the human what you created, merged, moved and left untouched, what is proposed for their
@@ -423,6 +472,8 @@ and restore the line. A check you have never seen fail proves nothing.
 ## Every session
 
 - **At session start and after every `/compact`, when inboxes exist** → read your inbox in full
+- **In your first message to a session on another machine, and after you relaunch** → announce yourself, ask it under which
+  name it sees you, and wait for its answer
 - **Before working on a topic** → search the memory folder for it and read what you find
 - **Before choosing a topic, when parallel sessions exist** → read the work registry, then add
   your block before opening the first file
