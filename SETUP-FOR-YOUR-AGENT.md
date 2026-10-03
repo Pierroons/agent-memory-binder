@@ -55,8 +55,9 @@ index under that limit.
 1. Create `<work>/temp/`, `<work>/deliverables/`, `<work>/archive/` and `<work>/scripts/`, plus
    `<work>/inbox/` for parallel sessions. Write the purge delay to `<work>/purge-days`, a file
    holding only that number: the purge and the checker read it there.
-2. Propose a weekly purge of `<work>/temp/`, as a cron job. It deletes files older than the delay,
-   then empty folders older than the delay, leaves git repositories untouched and lists them, and
+2. Propose a weekly purge of `<work>/temp/`, as a cron job. It first sets aside git repositories: no
+   pass touches them, and it lists them; then it deletes files older than the delay, and finally the
+   empty folders under `temp/`, whatever their date — emptying a folder resets its date to now. It
    logs every deletion in `<work>/purge.log`. Install it once the human approves; that approval
    covers every later run.
 3. Add a **Folders** section to `~/.claude/CLAUDE.md` with these rules:
@@ -84,7 +85,8 @@ If your system prompt describes a memory note format, follow it. Otherwise use t
 ---
 name: <file name without .md>
 description: <the question that should bring this note back, in the human's words>
-type: <user | feedback | project | reference>
+metadata:
+  type: <user | feedback | project | reference>
 ---
 
 <the fact or the rule>
@@ -102,8 +104,9 @@ type: <user | feedback | project | reference>
 - Tell a **state** from a **lesson** with one test: can this sentence become false while nobody
   edits the file? Then it is a state. Write every state with its date, or with the command that
   establishes it. Paths, versions and roles are states too: they stay in the note, with their date.
-  When you cannot measure a state, keep the date the note already gives it, or write "date unknown,
-  not verified". Write a lesson plainly.
+  Measure again every state in the notes you keep, and write what you measure, with its date; report
+  to the human every state your measurement contradicts. When you cannot measure a state, keep the
+  date the note already gives it, or write "date unknown, not verified". Write a lesson plainly.
 - Keep in the note what must be re-read every time: traps, active decisions, procedures, paths,
   versions. Move design reasoning, session history and incident stories to
   `<work>/archive/details/<note-name>.md`, and leave in the note a one-line link to it.
@@ -147,7 +150,8 @@ The buffer holds what is decided and not yet written into its note.
 - When the target note is not known yet, use `_buffer/notebook_<session-name>__YYYYMMDD.md`.
 - Deadlines, counted from the date in the file name: 14 days for a named target, 7 days for a
   notebook. Size: 8 KB (8,192 bytes) per buffer.
-- To distill: lessons go into the note; states are measured again, then written with their date;
+- Distill a buffer as soon as the checker reports it, as a defect or a warning, without waiting for
+  the review: lessons go into the note; states are measured again, then written with their date;
   finished work goes to the archive.
 - A section that belongs to another session starts with `> Reserved: <session name>`. Leave it as it
   is.
@@ -158,11 +162,23 @@ The buffer holds what is decided and not yet written into its note.
 1. In `<work>/inbox/`, write a `README.md` that states the protocol below and lists the sessions.
 2. Create one file per session: `for-<name>.md`.
 3. Suggest to the human a way to name each session at launch, for example an environment variable:
-   `SESSION_NAME=backend claude`.
+   `SESSION_NAME=backend claude`. If the human uses Remote Control, suggest passing the same name to
+   the bridge: `SESSION_NAME=backend claude --remote-control backend`. For a session already
+   running, `/rename backend` sets that name as seen from the same machine and from others.
 4. Propose a `SessionStart` hook without matcher, in `~/.claude/settings.json`, which covers every
    project. It prints the session name and the path of its inbox; without a name, or with a name
    that has no inbox, it says so and lists the inboxes. Claude Code adds a `SessionStart` hook's
    output to the context, at startup, on resume and after `/compact`.
+5. A session has two peer names, both distinct from its inbox name. Sessions on other machines see
+   it under the name passed to `--remote-control`, which survives restarts; without it, under a
+   title that follows its task. Sessions on the same machine see it under a generated name, which
+   can change during the session, even with `--remote-control`. `/rename` sets both for the current
+   session. Its own `ListAgents` gives it only its local name. To write to a session, use the name
+   YOUR `ListAgents` shows, or the `bridge:` ID of a message received from it, which goes stale when
+   it restarts. On the first exchange, have it state its inbox name: a generated name can point to
+   another session, elsewhere or later, and an accepted send does not prove it reached the right
+   one. A session's bracketed reference in `ListAgents` survives its name changes; every session on
+   one machine sees the same one for it, another machine sees a different one.
 
 Every entry follows this format:
 
@@ -353,7 +369,7 @@ the inbox folder, `<work>/inbox` by default; its report names the inbox folder i
 Markdown links to `.md` files; text inside backticks holds no link. It reports:
 
 1. links that point to no file
-2. notes linked neither from the index nor from a summary
+2. notes linked neither from the index nor from a summary, outside `_buffer/`
 3. an index over 150 lines or 20,000 bytes
 4. notes without frontmatter or without `description`
 5. buffers past their deadline, over 8 KB, or named outside the two patterns of Step 5
@@ -367,7 +383,14 @@ Markdown links to `.md` files; text inside backticks holds no link. It reports:
 9. when the registry exists: more than 12 open blocks, blocks open for more than 7 days, and open
    blocks without a readable date
 
-Exit code: 0 when clean, 1 when something is found, 2 when misconfigured.
+When there are no inboxes, the report says so on one line: "inbox: none — check 8 not applicable".
+Likewise for the registry: "registry: none — check 9 not applicable".
+
+It also warns about buffers `<target-note>__YYYYMMDD.md` whose target note does not exist: the note
+is still to be written, or the name is wrong. A warning is not a defect.
+
+Exit code: 0 when nothing is found apart from warnings, 1 when something is found, 2 when
+misconfigured. The report concludes "nothing to report" only with no defect and no warning.
 
 Then add a `--canary` mode: copy the memory folder, `<work>/temp/` with its file dates,
 `<work>/purge-days` and the inbox folder to a temporary directory that the script deletes when done;
@@ -376,9 +399,14 @@ verify that every planted defect appears in the second report and not in the fir
 each exclusion — a link inside backticks, a git repository in `<work>/temp/`, an entry marked done,
 a state marked done, a closed block older than 7 days, an entry deposited an hour ago and not read
 yet, an ordinary entry waiting for three days, a `## ` heading inside a code fence — a case the checks must leave silent, and verify it
-stays silent. In this mode, exit 0 when every planted defect is
-reported and every silent case stays silent, 1 otherwise. Run the canary once now and show the human
-its output. A check you have never seen fail proves nothing.
+stays silent. Also build, in the same temporary directory, a minimal memory with its own working
+folder — an index linking a single note, a buffer dated today for a missing note, an empty `temp/`
+and the purge delay —: the checker must warn about it, must not conclude "nothing to report", and
+must exit 0. At the end, verify that the temporary directory no longer exists. In this mode, exit 0
+when every planted defect is reported, every silent case stays silent, the minimal memory gives
+that result and the temporary directory is gone, 1 otherwise. Run the canary once now and show the
+human its output. Then break one line of the checker, run the canary again, check that it exits 1,
+and restore the line. A check you have never seen fail proves nothing.
 
 ## Step 9 — System note and report
 

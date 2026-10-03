@@ -60,10 +60,12 @@ cette limite.
    plus `<travail>/inbox/` pour des sessions en parallèle. Écris le délai de purge dans
    `<travail>/purge-days`, un fichier qui ne contient que ce nombre : la purge et le contrôle le
    lisent là.
-2. Propose une purge hebdomadaire de `<travail>/temp/`, par une tâche cron. Elle supprime les
-   fichiers plus vieux que le délai, puis les dossiers vides plus vieux que le délai, laisse intacts
-   les dépôts git en les listant, et note chaque suppression dans `<travail>/purge.log`. Installe-la
-   une fois que l'humain a donné son accord ; cet accord vaut pour chaque passage suivant.
+2. Propose une purge hebdomadaire de `<travail>/temp/`, par une tâche cron. Elle met d'abord de côté
+   les dépôts git : aucune passe n'y touche, et elle les liste ; puis elle supprime les fichiers
+   plus vieux que le délai, et enfin les dossiers vides sous `temp/`, sans regarder leur date —
+   vider un dossier remet sa date à maintenant. Elle note chaque suppression dans
+   `<travail>/purge.log`. Installe-la une fois que l'humain a donné son accord ; cet accord vaut
+   pour chaque passage suivant.
 3. Ajoute une section **Dossiers** à `~/.claude/CLAUDE.md`, avec ces règles :
    - Les fichiers temporaires — scripts, téléchargements, brouillons, sorties de test — vont dans
      `<travail>/temp/`.
@@ -92,7 +94,8 @@ Si ton prompt système décrit un format de fiche mémoire, suis-le. Sinon, util
 ---
 name: <nom du fichier sans .md>
 description: <la question qui doit faire revenir cette fiche, dans les mots de l'humain>
-type: <user | feedback | project | reference>
+metadata:
+  type: <user | feedback | project | reference>
 ---
 
 <le fait ou la règle>
@@ -110,8 +113,10 @@ type: <user | feedback | project | reference>
 - Distingue un **état** d'une **leçon** par un seul test : cette phrase peut-elle devenir fausse
   sans que personne ne touche au fichier ? Alors c'est un état. Écris chaque état avec sa date, ou
   avec la commande qui l'établit. Les chemins, les versions et les rôles sont aussi des états : ils
-  restent dans la fiche, avec leur date. Quand tu ne peux pas mesurer un état, garde la date que la
-  fiche lui donne déjà, ou écris « date inconnue, non vérifié ». Écris une leçon telle quelle.
+  restent dans la fiche, avec leur date. Remesure chaque état des fiches que tu gardes, et écris ce
+  que tu mesures, avec sa date ; signale à l'humain chaque état que ta mesure dément. Quand tu ne
+  peux pas mesurer un état, garde la date que la fiche lui donne déjà, ou écris « date inconnue, non
+  vérifié ». Écris une leçon telle quelle.
 - Garde dans la fiche ce qui doit être relu à chaque fois : pièges, décisions en vigueur,
   procédures, chemins, versions. Déplace le raisonnement de conception, l'historique des sessions et
   les récits d'incident dans `<travail>/archive/details/<nom-de-fiche>.md`, et laisse dans la fiche
@@ -157,7 +162,8 @@ Le tampon garde ce qui est décidé et pas encore écrit dans sa fiche.
   `_buffer/notebook_<nom-de-session>__AAAAMMJJ.md`.
 - Échéances, comptées depuis la date du nom de fichier : 14 jours pour une cible nommée, 7 jours
   pour un carnet. Taille : 8 Ko (8 192 octets) par tampon.
-- Pour distiller : les leçons vont dans la fiche ; les états sont remesurés, puis écrits avec leur
+- Distille un tampon dès que le contrôle le signale, en défaut comme en avertissement, sans attendre
+  la relecture : les leçons vont dans la fiche ; les états sont remesurés, puis écrits avec leur
   date ; le travail terminé part aux archives.
 - Une section qui appartient à une autre session commence par `> Réservé : <nom de session>`.
   Laisse-la telle quelle.
@@ -170,10 +176,23 @@ Le tampon garde ce qui est décidé et pas encore écrit dans sa fiche.
    sessions.
 2. Crée un fichier par session : `for-<nom>.md`.
 3. Propose à l'humain une façon de nommer chaque session au lancement, par exemple une variable
-   d'environnement : `SESSION_NAME=backend claude`.
+   d'environnement : `SESSION_NAME=backend claude`. Si l'humain utilise Remote Control, propose de
+   passer le même nom au pont : `SESSION_NAME=backend claude --remote-control backend`. Pour une
+   session déjà lancée, `/rename backend` fixe ce nom vu de la même machine comme des autres.
 4. Propose un hook `SessionStart` sans matcher, dans `~/.claude/settings.json`, qui couvre tous les
    projets. Il affiche le nom de la session et le chemin de sa boîte ; sans nom, ou avec un nom qui
    n'a pas de boîte, il le dit et liste les boîtes. Claude Code ajoute la sortie d'un hook `SessionStart` au contexte, au démarrage, à la reprise et après `/compact`.
+5. Une session porte deux noms de pair, distincts de son nom de boîte. Les sessions des autres
+   machines la voient sous le nom passé à `--remote-control`, qui survit aux redémarrages ; sans
+   lui, sous un titre qui suit sa tâche. Les sessions de la même machine la voient sous un nom
+   fabriqué, qui peut changer en cours de session, même avec `--remote-control`. `/rename` fixe les
+   deux pour la session en cours. Son propre `ListAgents` ne lui donne que son nom local. Pour
+   écrire à une session, prends le nom que TON `ListAgents` affiche, ou l'identifiant `bridge:` d'un
+   message reçu d'elle, qui périme quand elle redémarre. Au premier échange, fais-lui dire son nom
+   de boîte : un nom fabriqué peut désigner une autre session, ailleurs ou plus tard, et un envoi
+   accepté ne prouve pas qu'il est arrivé chez la bonne. La référence entre crochets d'une session
+   dans `ListAgents` survit à ses changements de nom ; toutes les sessions d'une même machine lui
+   voient la même, une autre machine une autre.
 
 Chaque entrée suit ce format :
 
@@ -374,7 +393,7 @@ Les liens sont les `[[nom-de-fiche]]` et les liens Markdown vers des fichiers `.
 accents graves ne contient aucun lien. Il signale :
 
 1. les liens qui ne pointent vers aucun fichier
-2. les fiches liées ni depuis l'index ni depuis un sommaire
+2. les fiches liées ni depuis l'index ni depuis un sommaire, hors `_buffer/`
 3. un index de plus de 150 lignes ou 20 000 octets
 4. les fiches sans en-tête ou sans `description`
 5. les tampons qui ont dépassé leur échéance, qui dépassent 8 Ko, ou dont le nom sort des deux
@@ -389,8 +408,15 @@ accents graves ne contient aucun lien. Il signale :
 9. quand le registre existe : plus de 12 blocs ouverts, les blocs ouverts depuis plus de 7 jours, et
    les blocs ouverts sans date lisible
 
-Code de sortie : 0 quand tout est propre, 1 quand quelque chose est trouvé, 2 quand le script est
-mal configuré.
+Quand il n'y a pas de boîtes, le rapport l'écrit sur une ligne : « boîtes : aucune — contrôle 8
+sans objet ». De même pour le registre : « registre : aucun — contrôle 9 sans objet ».
+
+Il avertit aussi des tampons `<fiche-cible>__AAAAMMJJ.md` dont la fiche cible n'existe pas : la
+fiche reste à écrire, ou le nom est faux. Un avertissement n'est pas un défaut.
+
+Code de sortie : 0 quand rien n'est trouvé hors avertissements, 1 quand quelque chose est trouvé,
+2 quand le script est mal configuré. Le rapport ne conclut « rien à signaler » que sans défaut ni
+avertissement.
 
 Ajoute ensuite un mode `--canary` : copie le dossier de mémoire, `<travail>/temp/` avec les dates de
 ses fichiers, `<travail>/purge-days` et le dossier des boîtes dans un répertoire temporaire que le
@@ -399,9 +425,15 @@ chaque contrôle ; relance les contrôles ; vérifie que chaque défaut planté 
 rapport et pas dans le premier. Plante aussi, pour chaque exclusion — un lien entre accents graves,
 un dépôt git dans `<travail>/temp/`, une entrée traitée, un état traité, un bloc clos de plus de
 7 jours, une entrée déposée il y a une heure et pas encore lue, une entrée ordinaire en attente
-depuis trois jours, un titre `## ` dans un bloc de code —, un cas que les contrôles doivent taire, et vérifie qu'il reste muet. Dans ce mode, le code de sortie vaut 0 quand chaque défaut planté est signalé et que
-chaque cas muet le reste, 1 sinon. Lance le canari une fois maintenant et montre sa sortie à
-l'humain. Un contrôle que tu n'as jamais vu échouer ne prouve rien.
+depuis trois jours, un titre `## ` dans un bloc de code —, un cas que les contrôles doivent taire, et vérifie qu'il reste muet. Construis aussi, dans le même répertoire temporaire, une mémoire
+minimale avec son propre dossier de travail — un index qui lie une seule fiche, un tampon daté du
+jour pour une fiche absente, un `temp/` vide et le délai de purge — : le contrôle doit l'avertir,
+ne pas conclure « rien à signaler », et rendre 0. À la fin, vérifie que le répertoire temporaire
+n'existe plus. Dans ce mode, le code de sortie vaut 0 quand chaque défaut planté est signalé, que
+chaque cas muet le reste, que la mémoire minimale rend ce résultat et que le répertoire temporaire
+a disparu, 1 sinon. Lance le canari une fois maintenant et montre sa sortie à l'humain. Puis
+sabote une ligne du contrôle, relance le canari, vérifie qu'il rend 1, et remets la ligne. Un
+contrôle que tu n'as jamais vu échouer ne prouve rien.
 
 ## Étape 9 — Fiche système et compte rendu
 
