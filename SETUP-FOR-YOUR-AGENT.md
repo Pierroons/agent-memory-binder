@@ -220,6 +220,37 @@ that another one has already fixed:
 - A lesson, a piece of information or an open question stays an ordinary entry. Only states follow
   this circuit, because only they become false on their own.
 
+**A session on a limited budget (if the human has one).** Some models draw on a capped allowance. At
+the time of writing (October 2026, Claude help page "Cyber Verification Program",
+`support.claude.com/en/articles/14604842`), Mythos 5.1 opens after an application to that program;
+on a Max plan it shares a single allowance with the Fable models, capped at half of the weekly usage
+limit, and that usage also counts toward the plan's regular limits; on Pro it runs on usage credits
+only; there, read "allowance" below as those credits. A Mythos session therefore draws on that
+allowance even if the human never uses Fable. Ask the human to confirm these rules on that page, and
+their access, then treat that session as a counted resource:
+
+- Suggest a launcher that pins its model and its effort (the default effort differs from one model
+  to another): `SESSION_NAME=review claude --model <model> --effort <level>`, run from the folder
+  the other sessions are launched from, which selects the memory. The default model in
+  `~/.claude/settings.json` stays the one the other sessions use. Inside that session, the `s` key
+  in the `/model` picker switches model for this session only, there and back; `Enter`, or
+  `/model <name>` typed directly, would save the choice as the default for every new session (Claude
+  Code model configuration page, October 2026).
+- Its brief is an entry in its inbox, written by the human or by another session: scope,
+  constraints, report format, and the inbox the report goes to. The human launches the session when
+  a task waits, after reading it, and that launch is the go; the session carries no background task,
+  no watching, no polling. Until then, check 8 of Step 9 reports the entry as a defect after 24
+  hours: here, that defect is the reminder to launch it.
+- Everything it reads is paid from the allowance: its inbox, the index at every call, and the agents
+  it starts, which run on its model unless their definition or the call names another; a Fable model
+  stays in the allowance. Other sessions write to it only to hand it a task or to answer it.
+- When the allowance or the credits run out, the human switches the session, with the `s` key in the
+  `/model` picker, to a model the plan's regular limits cover, never a Fable model: the task goes on
+  with what is already found, and does not wait for a refill.
+- The human notes what a typical task costs, read on the usage page before and after, on the figure
+  of that allowance or on the credits spent, not on the overall limit, which mixes every session.
+  Until the first task, the system note says "not measured yet".
+
 ## Step 7 — Across machines: the bridge (several machines only)
 
 Sessions on two machines do not read the same disk: the inboxes of Step 6 do not connect them.
@@ -462,7 +493,9 @@ and restore the line. A check you have never seen fail proves nothing.
    purge, note format, state and lesson, buffer naming and deadlines, archive naming, the path of
    the inbox `README.md`, which holds their format and protocol, the paths of the registry, the
    send script and its bench, how to run the checker and its canary, and, on several machines, each
-   session's machine and set name.
+   session's machine and set name; if there is one, the limited-budget session, its plan, model,
+   effort and fallback model, the date its rules were confirmed, and the measured cost of a typical
+   task.
 2. Add the lines of **Every session** below to the **Always** section of the index, each linked to
    `reference_memory_system.md`.
 3. Show the human what you created, merged, moved and left untouched, what is proposed for their

@@ -237,6 +237,39 @@ de travailler sur un fait qu'une autre a déjà corrigé :
 - Une leçon, une information ou une question ouverte reste une entrée ordinaire. Seuls les états
   suivent ce circuit, parce que seuls ils deviennent faux tout seuls.
 
+**Une session à budget limité (si l'humain en a une).** Certains modèles puisent dans une allocation
+plafonnée. Au moment où ces lignes sont écrites (octobre 2026, page d'aide Claude « Cyber
+Verification Program », `support.claude.com/en/articles/14604842`), Mythos 5.1 s'ouvre après une
+candidature à ce programme ; sur un abonnement Max, il partage une seule allocation avec les modèles
+Fable, plafonnée à la moitié de la limite d'usage hebdomadaire, et cette consommation compte aussi
+dans les limites ordinaires du plan ; sur Pro, il ne tourne que sur crédits d'usage, et
+« allocation » se lit alors, plus bas, comme ces crédits. Une session Mythos entame donc cette
+allocation même si l'humain n'utilise jamais Fable. Demande à l'humain de confirmer ces règles sur
+cette page, et son accès, puis traite cette session comme une ressource comptée :
+
+- Propose un lanceur qui fixe son modèle et son effort (l'effort par défaut change d'un modèle à
+  l'autre) : `SESSION_NAME=review claude --model <modèle> --effort <niveau>`, lancé depuis le
+  dossier d'où partent les autres sessions, celui qui sélectionne la mémoire. Le modèle par défaut
+  de `~/.claude/settings.json` reste celui des autres sessions. Dans cette session, la touche `s` du
+  sélecteur de `/model` change de modèle pour cette session seulement, à l'aller comme au retour ;
+  `Entrée`, ou `/model <nom>` tapé directement, enregistrerait le choix comme défaut de toutes les
+  nouvelles sessions (page de configuration des modèles de Claude Code, octobre 2026).
+- Son brief est une entrée de sa boîte, écrite par l'humain ou par une autre session : périmètre,
+  contraintes, format du rapport, et la boîte où va le rapport. L'humain lance la session quand une
+  tâche attend, après l'avoir lue, et ce lancement vaut go ; la session ne porte ni tâche de fond,
+  ni surveillance, ni attente active. D'ici là, le contrôle 8 de l'étape 9 signale l'entrée comme un
+  défaut au bout de 24 heures : ici, ce défaut est le rappel de la lancer.
+- Tout ce qu'elle lit se paie sur l'allocation : sa boîte, l'index à chaque appel, et les agents
+  qu'elle lance, qui tournent sur son modèle sauf si leur définition ou l'appel en nomme un autre ;
+  un modèle Fable reste dans l'allocation. Les autres sessions ne lui écrivent que pour lui confier
+  une tâche ou lui répondre.
+- Quand l'allocation ou les crédits sont épuisés, l'humain bascule la session, touche `s` du
+  sélecteur de `/model`, sur un modèle que couvrent les limites ordinaires du plan, jamais un modèle
+  Fable : la tâche continue avec ce qui est déjà trouvé, sans attendre de recharge.
+- L'humain note le coût d'une tâche type, lu sur la page d'usage avant et après, sur le chiffre de
+  cette allocation ou sur les crédits dépensés, pas sur la limite générale, qui mêle toutes les
+  sessions. Jusqu'à la première tâche, la fiche système porte « pas encore mesuré ».
+
 ## Étape 7 — Entre machines : le pont (plusieurs machines seulement)
 
 Des sessions sur deux machines ne lisent pas le même disque : les boîtes de l'étape 6 ne les relient
@@ -491,7 +524,9 @@ contrôle que tu n'as jamais vu échouer ne prouve rien.
    dossiers de travail et purge, format des fiches, état et leçon, nommage et échéances des tampons,
    nommage des archives, chemin du `README.md` des boîtes, qui porte leur format et leur protocole,
    chemins du registre, du script d'envoi et de son banc, lancement du contrôle et de son canari,
-   et, sur plusieurs machines, la machine et le nom posé de chaque session.
+   et, sur plusieurs machines, la machine et le nom posé de chaque session ; s'il y en a une, la
+   session à budget limité, son plan, son modèle, son effort et son modèle de repli, la date où ses
+   règles ont été confirmées, et le coût mesuré d'une tâche type.
 2. Ajoute les lignes d'**À chaque session**, ci-dessous, à la section **Toujours** de l'index,
    chacune liée à `reference_memory_system.md`.
 3. Montre à l'humain ce que tu as créé, fusionné, déplacé et laissé intact, ce qui attend sa
